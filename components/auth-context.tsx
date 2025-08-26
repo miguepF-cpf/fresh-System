@@ -20,15 +20,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function saveUserToGoogleSheets(name: string, email: string) {
+// 🔹 Função que envia os dados pro Google Sheets
+async function saveUserToGoogleSheets(name: string, email: string, password: string) {
   try {
-    const response = await fetch("https://script.google.com/macros/s/AKfycbzJb1j6Ag_tkRvLrLJYc994vt8byPQc093hFinO8rAd88vdhuonZrg9bLdQg7i2hySe/exec", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email }),
-    })
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbwASOtt9o1IlsXbvm2sl4oe3zIbQSQNCRQVjw1dPSPRch8AzDi5z5dCGBxVbo-b67c3/exec",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      }
+    )
 
     const result = await response.json()
     console.log("[v0] Enviado para Google Sheets:", result)
@@ -105,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser)
     localStorage.setItem("freshsystem_user", JSON.stringify(newUser))
 
-    // 🔹 Envia pro Google Sheets
-    await saveUserToGoogleSheets(name, email)
+    // 🔹 Envia também pro Google Sheets
+    await saveUserToGoogleSheets(name, email, password)
 
     return { success: true, message: "Cadastro realizado com sucesso!" }
   }
