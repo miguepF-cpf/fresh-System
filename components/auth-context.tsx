@@ -7,7 +7,7 @@ interface User {
   name: string
   email: string
   avatar?: string
-  provider: "email" | "google" | "discord"
+  provider: "email"
 }
 
 interface AuthContextType {
@@ -15,35 +15,27 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   logout: () => void
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>
-  loginWithProvider: (userData: User) => void
   isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function saveUserToFile(email: string, password: string, name: string) {
+async function saveUserToGoogleSheets(name: string, email: string) {
   try {
-    const currentDate = new Date().toLocaleDateString("pt-BR")
-
-    const response = await fetch("/api/save-user", {
+    const response = await fetch("https://script.google.com/macros/s/AKfycbzJb1j6Ag_tkRvLrLJYc994vt8byPQc093hFinO8rAd88vdhuonZrg9bLdQg7i2hySe/exec", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        email,
-        password,
-        name,
-        date: currentDate,
-      }),
+      body: JSON.stringify({ name, email }),
     })
 
     const result = await response.json()
-    console.log("[v0] Resposta do salvamento:", result)
+    console.log("[v0] Enviado para Google Sheets:", result)
 
-    return result.success
+    return result.result === "success"
   } catch (error) {
-    console.error("[v0] Erro ao salvar usuário:", error)
+    console.error("[v0] Erro ao enviar para Google Sheets:", error)
     return false
   }
 }
@@ -72,18 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: foundUser.id,
       name: foundUser.name,
       email: foundUser.email,
-      provider: foundUser.provider || "email",
+      provider: "email",
     }
 
     setUser(userData)
     localStorage.setItem("freshsystem_user", JSON.stringify(userData))
 
     return { success: true, message: "Login realizado com sucesso!" }
-  }
-
-  const loginWithProvider = (userData: User) => {
-    setUser(userData)
-    localStorage.setItem("freshsystem_user", JSON.stringify(userData))
   }
 
   const logout = () => {
@@ -103,11 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: "Este email já está cadastrado!" }
     }
 
-    const fileSaved = await saveUserToFile(email, password, name)
-    if (!fileSaved) {
-      console.warn("[v0] Falha ao salvar no arquivo, mas continuando com cadastro local")
-    }
-
+    // Cria novo usuário
     const newUser: User = {
       id: Date.now().toString(),
       name,
@@ -115,17 +98,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: "email",
     }
 
+    // Salva no localStorage
     const updatedUsers = [...existingUsers, { ...newUser, password }]
     localStorage.setItem("freshsystem_users", JSON.stringify(updatedUsers))
 
     setUser(newUser)
     localStorage.setItem("freshsystem_user", JSON.stringify(newUser))
 
+    // 🔹 Envia pro Google Sheets
+    await saveUserToGoogleSheets(name, email)
+
     return { success: true, message: "Cadastro realizado com sucesso!" }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, loginWithProvider, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, isLoading }}>
       {children}
     </AuthContext.Provider>
   )
