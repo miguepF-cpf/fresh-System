@@ -20,26 +20,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// 🔹 Função que envia os dados pro Google Sheets
+// 🔹 Função que envia os dados para o backend (Next.js API)
 async function saveUserToGoogleSheets(name: string, email: string, password: string) {
+  console.log("📤 Enviando para API interna:", { name, email, password })
   try {
-    const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbwASOtt9o1IlsXbvm2sl4oe3zIbQSQNCRQVjw1dPSPRch8AzDi5z5dCGBxVbo-b67c3/exec",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, password }),
-      }
-    )
+    const response = await fetch("/api/save-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    })
 
     const result = await response.json()
-    console.log("[v0] Enviado para Google Sheets:", result)
+    console.log("✅ Resposta da API:", result)
 
     return result.result === "success"
   } catch (error) {
-    console.error("[v0] Erro ao enviar para Google Sheets:", error)
+    console.error("❌ Erro ao enviar para API:", error)
     return false
   }
 }
@@ -109,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser)
     localStorage.setItem("freshsystem_user", JSON.stringify(newUser))
 
-    // 🔹 Envia também pro Google Sheets
+    // 🔹 Envia também pro Google Sheets via API interna
     await saveUserToGoogleSheets(name, email, password)
 
     return { success: true, message: "Cadastro realizado com sucesso!" }
